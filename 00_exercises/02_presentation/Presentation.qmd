@@ -1,0 +1,187 @@
+---
+title: "Causal Inference with Observational Data"
+subtitle: "Confidence Intervals in Emulated Target Trials"
+date: "12/11/2024"
+date-format: "DD MMM YYYY"
+toc: false
+format: 
+  revealjs:
+    slide-number: true
+    logo: pres_files/UU_logo_2021_EN_RGB.png
+    footer: "Florian Metwaly"
+    css: pres_files/custom-style.css
+embed-resources: true
+bibliography: pres_files/bib_presentation.bib
+nocite: |
+  @fu_target_2023, @hernan_causal_nodate, @su_trialemulation_2024, @hernan_how_2018, @austin_variance_2016
+  
+---
+
+## Gold Standard of Causal Inference
+
+-   **Randomized control trials** are the gold standard of Causal Inference
+-   But, not always feasible
+    -   ethical limitations
+    -   practical limitations
+
+→ more and more common to use **observational data**
+
+::: notes
+-   Lets first talk about the Gold Standard in Causal Inference, RCTs
+-   example: smoking on lung cancer -\> unethical and would take decades
+-   especially in health sciences, use of large scale observational data, like EHR
+:::
+
+## Problem with Observational Data
+
+-   **Why can't we directly gain causal insights?**
+    -   Treatment assignment is **not randomized**
+    -   Eligibility and treatment start occur at **different time points**
+    -   Observational data is prone to **biases** (e.g. selection bias)
+
+→ Led to the development of the **Target Trial Emulation** framework
+
+::: notes
+:::
+
+## Target Trial Emulation
+
+-   **TTE aims to prevent introduction of biases in observational data**
+-   Researchers emulate a series of **trials**
+-   Core concept: **t₀ alignment**
+
+→ **sequential** TTE
+
+::: notes
+- emulate a series of trials that mimic rct
+-   Define t₀: the time point when eligibility is assessed, and treatment and fup begin.
+-   Mention the iterative nature of sequential TTE briefly.
+-   Core concept: **t₀ alignment** (ensuring comparable starting points for treatment evaluation)
+:::
+
+## 
+
+![](pres_files/TTE_slide.jpg)
+
+::: notes
+- 7 rows -> 14 rows
+- in case of potentially millions of EHR, the tables can become insanely large 
+:::
+
+## Research Gap
+
+-   **Confidence Intervals** can't be estimated directly anymore
+    -   one individual can be in multiple trials
+    -   IPW used for bias adjustments
+-   Literature recommends **non-parametric bootstrap**
+-   Two challenges:
+    -   **Computational efficiency** → `Julia`
+    -   **Sandwich-type** vs. **Bootstrap** variance estimation → Simulation Study
+
+::: notes
+- in practice: sandwich estimators
+- sandwich: analytic, but conservative
+- TTE itself is already computationally expensive, therefore in statistical software the analytic sandwich estimators are implemented. Bootstrap adds another layer of computational complexity.
+:::
+
+## Simulation Study
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### `Julia` TTE package vs. existing `R` package
+- **Speed**
+- **Memory usage**
+:::
+
+::: {.column width="50%"}
+### Sandwich-type vs. Bootstrap Variance Estimation
+- **Coverage**
+- **Width of CI**
+- **Type-I error rate**
+- **Power**
+:::
+
+::::
+
+::: notes
+- Julia: modern, fast, memory efficient, especially compared to R
+- varying sample sizes, size of treatment groups and amount of information introduced
+
+- sandwich type estimators, which are implemented in R package
+
+- trade off between statistical efficancy and computational complexity is worth using the bootstrap
+:::
+
+## Marginal Risk Difference (MRD) {.smaller}
+\begin{equation}
+    \begin{aligned}
+    \label{eq:MRD}
+    \widehat{\operatorname{MRD}}_m(k)= & \frac{1}{n_m} \sum_{i=1}^n E_{m, i} \prod_{j=0}^k\left\{1-\operatorname{logit}^{-1}\left\{\mu\left(j, m, a=0, V_i, L_{m, 0, i} ; \hat{\boldsymbol{\beta}}\right)\right\}\right\} \\
+    & -\frac{1}{n_m} \sum_{i=1}^n E_{m, i} \prod_{j=0}^k\left\{1-\operatorname{logit}^{-1}\left\{\mu\left(j, m, a=1, V_i, L_{m, 0, i} ; \hat{\boldsymbol{\beta}}\right)\right\}\right\},
+    \end{aligned}
+\end{equation}
+
+## Example $R$ TrialEmulation
+```{r}
+#| eval: false
+#| echo: true
+
+library(TrialEmulation)
+# Prepare the example data
+data("trial_example")
+# Set columns to factors as necessary
+trial_example$catvarA <- as.factor(trial_example$catvarA)
+trial_example$catvarB <- as.factor(trial_example$catvarB)
+
+result <- initiators(
+  data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("catvarA", "catvarB", "nvarA", "nvarB", "nvarC"),
+  use_censor_weights = FALSE
+)
+```
+
+## Table example data {.smaller}
+```{r}
+#| echo: false
+#| eval: true
+library(TrialEmulation)
+library(DT)
+library(tidyverse)
+data("trial_example")
+set.seed(1337)
+trial_example <- trial_example %>%
+  sample_n(1000)
+datatable(trial_example)
+```
+
+## Life Expectation and GDP
+```{r}
+#| echo: false
+#| eval: true
+library(ggplot2)
+library(plotly)
+library(gapminder)
+
+p <- gapminder %>%
+  filter(year==1977) %>% # filters only year 1977
+  ggplot(aes(gdpPercap, lifeExp, size = pop, color=continent)) + # creates ggplot object
+  geom_point() + # adds bibbles
+  theme_bw() # change theme
+
+ggplotly(p) # plot interactive plot
+```
+
+
+## Sources
+
+::: {.bibliography}
+:::
